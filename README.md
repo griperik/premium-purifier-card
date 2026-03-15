@@ -2,7 +2,7 @@
 
 A premium, highly customizable air purifier card for Home Assistant. Designed to feel like a native app rather than a dashboard widget — with animated particles, a glowing ring, real-time air quality data and full UI configuration without any YAML.
 
-![Premium Purifier Card](https://raw.githubusercontent.com/your-griperik/premium-purifier-card/main/preview.png)
+![Premium Purifier Card](https://raw.githubusercontent.com/griperik/premium-purifier-card/main/preview.png)
 
 ## Features
 
