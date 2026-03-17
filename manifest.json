@@ -1,0 +1,10 @@
+{
+  "domain": "premium-purifier-card",
+  "name": "Premium Purifier Card",
+  "version": "1.2.0",
+  "documentation": "https://github.com/griperik/premium-purifier-card/blob/main/README.md",
+  "dependencies": [],
+  "codeowners": ["griperik"],
+  "requirements": [],
+  "release_notes": "Added separate speed entity, smart slider visibility, always show slider toggle, dropdown bugfix, and value color customization."
+}
