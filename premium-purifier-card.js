@@ -101,6 +101,7 @@ class PremiumPurifierCardEditor extends HTMLElement {
     return [
       { name:'name', selector:{ text:{} } },
       { name:'power_entity', selector:{ entity:{} } },
+      { name:'speed_entity', selector:{ entity:{ domain:['number','input_number'] } } },
       { name:'temperature_entity', selector:{ entity:{ domain:'sensor', unit_of_measurement:['°C','°F'] } } },
       { name:'humidity_entity',    selector:{ entity:{ domain:'sensor', unit_of_measurement:'%' } } },
       { name:'pm_entity',          selector:{ entity:{ domain:'sensor', unit_of_measurement:'µg/m³' } } },
@@ -136,6 +137,7 @@ class PremiumPurifierCardEditor extends HTMLElement {
           { name:'show_fan',             selector:{ boolean:{} } },
           { name:'show_particles',       selector:{ boolean:{} } },
           { name:'show_speed_slider',    selector:{ boolean:{} } },
+          { name:'always_show_slider',   selector:{ boolean:{} } },
           { name:'show_background_glow', selector:{ boolean:{} } },
           { name:'show_ring',            selector:{ boolean:{} } },
           { name:'show_ring_glow',       selector:{ boolean:{} } },
@@ -157,6 +159,20 @@ class PremiumPurifierCardEditor extends HTMLElement {
         ]
       },
       { name:'card_opacity', selector:{ number:{ min:0, max:100, step:1 } } },
+      // Value color customization
+      { name:'use_custom_value_colors', selector:{ boolean:{} } },
+      ...(this._config.use_custom_value_colors ? [
+        {
+          type:'grid', name:'', flatten:true,
+          schema:[
+            { name:'color_temp_value',     selector:{ color_rgb:{} } },
+            { name:'color_hum_value',      selector:{ color_rgb:{} } },
+            { name:'color_fan_value',      selector:{ color_rgb:{} } },
+            { name:'color_filter_value',   selector:{ color_rgb:{} } },
+            { name:'color_aq_temp_value',  selector:{ color_rgb:{} } },
+          ]
+        }
+      ] : []),
     ];
   }
 
@@ -183,7 +199,7 @@ class PremiumPurifierCardEditor extends HTMLElement {
       show_stat_boxes:'Visa rutor runt sensorer',
       show_temperature:'Visa temperatur', show_humidity:'Visa luftfuktighet',
       show_fan:'Visa fläktikon', show_particles:'Visa partikelanimation',
-      show_speed_slider:'Visa hastighetslider',
+      show_speed_slider:'Visa hastighetslider', always_show_slider:'Visa alltid slider',
       show_background_glow:'Visa bakgrundsglow', show_ring:'Visa ring',
       show_ring_glow:'Visa glow runt ringen', animate_rings:'Animera ringar',
       animate_fan:'Animera fläktikon',
@@ -194,6 +210,12 @@ class PremiumPurifierCardEditor extends HTMLElement {
       card_opacity:'Kortets transparens (0=genomskinlig, 100=solid)',
       color_primary:'Primärfärg', color_secondary:'Sekundärfärg',
       color_bg1:'Bakgrund ljus', color_bg2:'Bakgrund mörk',
+      use_custom_value_colors:'Anpassa värdefärger',
+      color_temp_value:'Temperaturvärde färg',
+      color_hum_value:'Luftfuktighetsvärde färg',
+      color_fan_value:'Fläktvärde färg',
+      color_filter_value:'Filtervärde färg',
+      color_aq_temp_value:'Luftkvalitetsvärde färg',
     };
     const en = {
       name:'Card name', power_entity:'Power switch (fan / switch)',
@@ -212,7 +234,7 @@ class PremiumPurifierCardEditor extends HTMLElement {
       show_stat_boxes:'Show boxes around sensors',
       show_temperature:'Show temperature', show_humidity:'Show humidity',
       show_fan:'Show fan icon', show_particles:'Show particle animation',
-      show_speed_slider:'Show speed slider',
+      show_speed_slider:'Show speed slider', always_show_slider:'Always show slider',
       show_background_glow:'Show background glow', show_ring:'Show ring',
       show_ring_glow:'Show glow around ring', animate_rings:'Animate ring',
       animate_fan:'Animate fan icon',
@@ -223,6 +245,12 @@ class PremiumPurifierCardEditor extends HTMLElement {
       card_opacity:'Card transparency (0=transparent, 100=solid)',
       color_primary:'Primary color', color_secondary:'Secondary color',
       color_bg1:'Background light', color_bg2:'Background dark',
+      use_custom_value_colors:'Customize value colors',
+      color_temp_value:'Temperature value color',
+      color_hum_value:'Humidity value color',
+      color_fan_value:'Fan value color',
+      color_filter_value:'Filter value color',
+      color_aq_temp_value:'Air quality value color',
     };
     const de = {
       name:'Kartenname', power_entity:'Netzschalter (fan / switch)',
@@ -241,7 +269,7 @@ class PremiumPurifierCardEditor extends HTMLElement {
       show_stat_boxes:'Rahmen um Sensoren anzeigen',
       show_temperature:'Temperatur anzeigen', show_humidity:'Luftfeuchtigkeit anzeigen',
       show_fan:'Lüftersymbol anzeigen', show_particles:'Partikelanimation anzeigen',
-      show_speed_slider:'Geschwindigkeitsregler anzeigen',
+      show_speed_slider:'Geschwindigkeitsregler anzeigen', always_show_slider:'Slider immer anzeigen',
       show_background_glow:'Hintergrundleuchten anzeigen', show_ring:'Ring anzeigen',
       show_ring_glow:'Leuchten um Ring anzeigen', animate_rings:'Ring animieren',
       animate_fan:'Lüftersymbol animieren',
@@ -252,6 +280,12 @@ class PremiumPurifierCardEditor extends HTMLElement {
       card_opacity:'Kartentransparenz (0=durchsichtig, 100=fest)',
       color_primary:'Primärfarbe', color_secondary:'Sekundärfarbe',
       color_bg1:'Hintergrund hell', color_bg2:'Hintergrund dunkel',
+      use_custom_value_colors:'Wertefarben anpassen',
+      color_temp_value:'Temperaturwert Farbe',
+      color_hum_value:'Feuchtigkeitswert Farbe',
+      color_fan_value:'Lüfterwert Farbe',
+      color_filter_value:'Filterwert Farbe',
+      color_aq_temp_value:'Luftqualitätswert Farbe',
     };
     const labels = lang==='de'?de : lang==='sv'?sv : en;
     return labels[schema.name] || en[schema.name] || schema.name;
@@ -380,7 +414,7 @@ class PremiumPurifierCard extends HTMLElement {
       color_primary:'#00c896', color_secondary:'#00bcd4',
       color_bg1:'#ffffff', color_bg2:'#f5f8fa',
       show_temperature:true, show_humidity:true,
-      show_fan:true, show_particles:true, show_speed_slider:true, show_stat_boxes:true,
+      show_fan:true, show_particles:true, show_speed_slider:true, always_show_slider:false, show_stat_boxes:true, speed_entity:'',
       show_background_glow:true, show_ring:true, show_ring_glow:true, animate_rings:true, animate_fan:true,
       use_custom_mode:false, custom_mode_entity:'',
       show_filter:false, filter_entity:'',
@@ -398,7 +432,7 @@ class PremiumPurifierCard extends HTMLElement {
     // Only force DOM rebuild if structural options changed (colors, visibility)
     const structuralKeys = ['color_primary','color_secondary','color_bg1','color_bg2',
       'show_temperature','show_humidity','show_fan','show_particles','show_filter','show_stat_boxes',
-      'show_speed_slider','show_background_glow','show_ring','show_ring_glow','animate_rings','animate_fan','sync_ring_to_fan','sync_particles_to_fan',
+      'show_speed_slider','speed_entity','show_background_glow','show_ring','show_ring_glow','animate_rings','animate_fan','sync_ring_to_fan','sync_particles_to_fan',
       'show_aqi','show_co2','show_voc','show_nox','show_pm1','show_pm25','show_pm4','show_pm10'];
     const needsRebuild = !this._config || structuralKeys.some(k => 
       JSON.stringify(this._config[k]) !== JSON.stringify(newConfig[k])
@@ -430,8 +464,15 @@ class PremiumPurifierCard extends HTMLElement {
   }
 
   _setFanSpeed(percentage) {
+    if (!this._hass) return;
+    const speedEid = this._config.speed_entity;
+    if (speedEid) {
+      const domain = speedEid.split('.')[0];
+      this._hass.callService(domain, 'set_value', { entity_id: speedEid, value: percentage });
+      return;
+    }
     const eid = this._config.power_entity;
-    if (!eid || !this._hass) return;
+    if (!eid) return;
     if (percentage === 0) {
       this._hass.callService('fan', 'turn_off', { entity_id: eid });
     } else {
@@ -536,7 +577,10 @@ class PremiumPurifierCard extends HTMLElement {
     const aqCount=activeAQ.length;
     const circleSize=aqCount===0?200:aqCount<=2?220:aqCount<=4?250:aqCount<=6?270:300;
     const aqGridCols=aqCount<=2?'repeat(2,1fr)':'repeat(3,1fr)';
-    const fanPct=parseInt(hass?.states[cfg.power_entity]?.attributes?.percentage ?? 0);
+    const speedEnt = cfg.speed_entity ? hass?.states[cfg.speed_entity] : null;
+    const fanPct = speedEnt
+      ? Math.min(100, Math.max(0, parseFloat(speedEnt.state)||0))
+      : parseInt(hass?.states[cfg.power_entity]?.attributes?.percentage ?? 0);
     const isOn=this._isOn();
     const isManualMode=mode.toLowerCase().includes('manual')||mode.toLowerCase()==='manual';
     const showPresets=isManualMode&&presetModes.length>0&&isOn;
@@ -553,6 +597,13 @@ class PremiumPurifierCard extends HTMLElement {
     const dark=isDark(bg1);
     const textMain=dark?'#f0f4f8':'#1a2332';
     const textSub=dark?'rgba(200,215,230,0.75)':'#8a9bb0';
+    // Custom value colors — fall back to textMain when not set
+    const useValColors=cfg.use_custom_value_colors===true;
+    const tempValColor  = useValColors&&cfg.color_temp_value   ? toHex(cfg.color_temp_value)   : textMain;
+    const humValColor   = useValColors&&cfg.color_hum_value    ? toHex(cfg.color_hum_value)    : textMain;
+    const fanValColor   = useValColors&&cfg.color_fan_value    ? toHex(cfg.color_fan_value)    : textMain;
+    const filterValColor= useValColors&&cfg.color_filter_value ? toHex(cfg.color_filter_value) : textMain;
+    const aqValColor    = useValColors&&cfg.color_aq_temp_value? toHex(cfg.color_aq_temp_value): null; // null = use sensor's own color
     const statBg=dark?'rgba(255,255,255,0.07)':'rgba(255,255,255,0.75)';
     const statBorder=dark?'rgba(255,255,255,0.10)':'rgba(220,230,240,0.70)';
     const trackColor=dark?'rgba(255,255,255,0.10)':'#e8edf2';
@@ -579,6 +630,10 @@ class PremiumPurifierCard extends HTMLElement {
     const showFilter=cfg.show_filter===true&&!!cfg.filter_entity;
     const filterVal=showFilter?(hass?.states[cfg.filter_entity]?.state??'–'):'–';
     const showParticle=cfg.show_particles!==false;
+    const currentModeLower=(currentPreset||'').toLowerCase();
+    const isAutoMode=['auto','sleep','night','eco','away','quiet','standby'].some(m=>currentModeLower===m||currentModeLower.startsWith(m));
+    const showSlider = (cfg.show_speed_slider!==false&&cfg.power_entity) &&
+      (cfg.always_show_slider===true || cfg.speed_entity || !isAutoMode);
     const statCols=[showTemp,showHum,showFan].filter(Boolean).length;
     const gridCols=statCols<=1?'1fr':statCols===2?'1fr 1fr':statCols===3?'1fr 1fr 1fr':'1fr 1fr 1fr 1fr';
     const modeButtons=options.map(opt=>{
@@ -787,11 +842,11 @@ class PremiumPurifierCard extends HTMLElement {
             </div>
           </div>
           <div class="stats">
-            ${showTemp?`<div class="stat"><ha-icon icon="mdi:thermometer"></ha-icon><span class="stat-value" id="temp-val">--</span><span class="stat-label">${tr(lang,'temperature')}</span></div>`:''}
-            ${showHum?`<div class="stat"><ha-icon icon="mdi:water-percent"></ha-icon><span class="stat-value" id="hum-val">--</span><span class="stat-label">${tr(lang,'humidity')}</span></div>`:''}
+            ${showTemp?`<div class="stat"><ha-icon icon="mdi:thermometer"></ha-icon><span class="stat-value" id="temp-val" style="color:${tempValColor}">--</span><span class="stat-label">${tr(lang,'temperature')}</span></div>`:''}
+            ${showHum?`<div class="stat"><ha-icon icon="mdi:water-percent"></ha-icon><span class="stat-value" id="hum-val" style="color:${humValColor}">--</span><span class="stat-label">${tr(lang,'humidity')}</span></div>`:''}
             ${showFilter?`<div style="display:none"><span id="filter-val"></span></div>`:''}
-            ${showFan?`<div class="stat${showModeDropdown?' clickable':''}" id="fan-stat"><ha-icon icon="mdi:fan" id="fan-icon" class="fan-icon fan-stopped"></ha-icon><span class="stat-value" id="fan-val">–</span><span class="stat-label">${tr(lang,'fan_speed')}</span></div>`:''}
-            ${cfg.show_speed_slider!==false&&cfg.power_entity?`
+            ${showFan?`<div class="stat${showModeDropdown?' clickable':''}" id="fan-stat"><ha-icon icon="mdi:fan" id="fan-icon" class="fan-icon fan-stopped"></ha-icon><span class="stat-value" id="fan-val" style="color:${fanValColor}">–</span><span class="stat-label">${tr(lang,'fan_speed')}</span></div>`:''}
+            ${showSlider?`
             <div class="slider-wrap" id="slider-wrap">
               <div class="slider-header">
                 <span class="slider-title">${tr(lang,'speed')}</span>
@@ -843,7 +898,7 @@ class PremiumPurifierCard extends HTMLElement {
         const gridStyle='grid-template-columns:'+aqGridCols+';';
         const aqItems=activeAQ.slice(0,8).map(s=>
           '<div class="aq-item">'+
-          '<span class="aq-val" style="color:'+s.color+'">'+s.value+'</span>'+
+          '<span class="aq-val" style="color:'+(aqValColor||s.color)+'">'+s.value+'</span>'+
           '<span class="aq-unit">'+s.unit+'</span>'+
           '<span class="aq-label">'+s.label+'</span>'+
           '</div>'
@@ -869,15 +924,15 @@ class PremiumPurifierCard extends HTMLElement {
           '</div>';
       }
     }
-    const tEl=root.getElementById('temp-val'); if(tEl) tEl.textContent=`${temp}°C`;
-    const hEl=root.getElementById('hum-val');  if(hEl) hEl.textContent=`${hum}%`;
+    const tEl=root.getElementById('temp-val'); if(tEl){ tEl.textContent=`${temp}°C`; tEl.style.color=tempValColor; }
+    const hEl=root.getElementById('hum-val');  if(hEl){ hEl.textContent=`${hum}%`;   hEl.style.color=humValColor; }
     const headerFilterRow=root.getElementById('header-filter-row');
     const headerFilterEl=root.getElementById('header-filter-val');
     if(headerFilterRow) headerFilterRow.style.display=showFilter?'flex':'none';
-    if(headerFilterEl) headerFilterEl.textContent='Filter '+filterVal+'%';
+    if(headerFilterEl){ headerFilterEl.textContent='Filter '+filterVal+'%'; headerFilterEl.style.color=filterValColor; }
     const fEl=root.getElementById('fan-val');
     const displayMode=useCustomMode?customModeCurrent:(currentPreset||mode||'–');
-    if(fEl) fEl.textContent=isOn?displayMode:'–';
+    if(fEl){ fEl.textContent=isOn?displayMode:'–'; fEl.style.color=fanValColor; }
 
     // Fan dropdown — rendered in document.body to escape shadow DOM completely
     const fanStat=root.getElementById('fan-stat');
@@ -922,8 +977,8 @@ class PremiumPurifierCard extends HTMLElement {
         dd.id='ppc-fan-dropdown';
         Object.assign(dd.style,{
           position:'fixed',
-          left: rect.left + rect.width/2 + 'px',
-          bottom: (window.innerHeight - rect.top + 8) + 'px',
+          left: (rect.left + rect.width/2) + 'px',
+          top: (rect.bottom + 8) + 'px',
           transform:'translateX(-50%)',
           background: dark?'#1e2535':'#ffffff',
           borderRadius:'16px',
@@ -984,11 +1039,20 @@ class PremiumPurifierCard extends HTMLElement {
 
         document.body.appendChild(dd);
 
+        // Follow card when scrolling
+        const updatePos=()=>{
+          const r=fanStat.getBoundingClientRect();
+          dd.style.top=(r.bottom+8)+'px';
+          dd.style.left=(r.left+r.width/2)+'px';
+        };
+        window.addEventListener('scroll',updatePos,true);
+
         // Close on outside click
         const close=(ev)=>{
           if(!dd.contains(ev.target)){
             closeDropdown();
             document.removeEventListener('click',close,true);
+            window.removeEventListener('scroll',updatePos,true);
           }
         };
         setTimeout(()=>document.addEventListener('click',close,true),0);
@@ -1065,6 +1129,9 @@ class PremiumPurifierCard extends HTMLElement {
 
       sliderTrack.addEventListener('pointercancel', () => { dragging = false; });
     }
+
+    const sliderWrap=root.getElementById('slider-wrap');
+    if(sliderWrap) sliderWrap.style.display=showSlider?'block':'none';
 
     // Sync slider to HA state only when not being dragged
     const sliderFill  = root.getElementById('slider-fill');
