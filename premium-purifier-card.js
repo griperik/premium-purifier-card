@@ -132,6 +132,7 @@ class PremiumPurifierCardEditor extends HTMLElement {
         type:'grid', name:'', flatten:true,
         schema:[
           { name:'show_stat_boxes',      selector:{ boolean:{} } },
+          { name:'show_slider_box',      selector:{ boolean:{} } },
           { name:'show_temperature',     selector:{ boolean:{} } },
           { name:'show_humidity',        selector:{ boolean:{} } },
           { name:'show_fan',             selector:{ boolean:{} } },
@@ -197,6 +198,7 @@ class PremiumPurifierCardEditor extends HTMLElement {
       show_filter:'Visa filterhälsa', filter_entity:'Filter sensor',
       use_custom_mode:'Custom lägesväljare', custom_mode_entity:'Välj din select-entitet',
       show_stat_boxes:'Visa rutor runt sensorer',
+      show_slider_box:'Visa ruta runt slider',
       show_temperature:'Visa temperatur', show_humidity:'Visa luftfuktighet',
       show_fan:'Visa fläktikon', show_particles:'Visa partikelanimation',
       show_speed_slider:'Visa hastighetslider', always_show_slider:'Visa alltid slider',
@@ -232,6 +234,7 @@ class PremiumPurifierCardEditor extends HTMLElement {
       show_filter:'Show filter health', filter_entity:'Filter sensor',
       use_custom_mode:'Custom mode selector', custom_mode_entity:'Select your entity',
       show_stat_boxes:'Show boxes around sensors',
+      show_slider_box:'Show box around slider',
       show_temperature:'Show temperature', show_humidity:'Show humidity',
       show_fan:'Show fan icon', show_particles:'Show particle animation',
       show_speed_slider:'Show speed slider', always_show_slider:'Always show slider',
@@ -267,6 +270,7 @@ class PremiumPurifierCardEditor extends HTMLElement {
       show_filter:'Filtergesundheit anzeigen', filter_entity:'Filter Sensor',
       use_custom_mode:'Benutzerdefinierter Moduswahlschalter', custom_mode_entity:'Entität auswählen',
       show_stat_boxes:'Rahmen um Sensoren anzeigen',
+      show_slider_box:'Rahmen um Slider anzeigen',
       show_temperature:'Temperatur anzeigen', show_humidity:'Luftfeuchtigkeit anzeigen',
       show_fan:'Lüftersymbol anzeigen', show_particles:'Partikelanimation anzeigen',
       show_speed_slider:'Geschwindigkeitsregler anzeigen', always_show_slider:'Slider immer anzeigen',
@@ -414,7 +418,7 @@ class PremiumPurifierCard extends HTMLElement {
       color_primary:'#00c896', color_secondary:'#00bcd4',
       color_bg1:'#ffffff', color_bg2:'#f5f8fa',
       show_temperature:true, show_humidity:true,
-      show_fan:true, show_particles:true, show_speed_slider:true, always_show_slider:false, show_stat_boxes:true, speed_entity:'',
+      show_fan:true, show_particles:true, show_speed_slider:true, always_show_slider:false, show_stat_boxes:true, show_slider_box:true, speed_entity:'',
       show_background_glow:true, show_ring:true, show_ring_glow:true, animate_rings:true, animate_fan:true,
       use_custom_mode:false, custom_mode_entity:'',
       show_filter:false, filter_entity:'',
@@ -431,7 +435,7 @@ class PremiumPurifierCard extends HTMLElement {
 
     // Only force DOM rebuild if structural options changed (colors, visibility)
     const structuralKeys = ['color_primary','color_secondary','color_bg1','color_bg2',
-      'show_temperature','show_humidity','show_fan','show_particles','show_filter','show_stat_boxes',
+      'show_temperature','show_humidity','show_fan','show_particles','show_filter','show_stat_boxes','show_slider_box',
       'show_speed_slider','speed_entity','show_background_glow','show_ring','show_ring_glow','animate_rings','animate_fan','sync_ring_to_fan','sync_particles_to_fan',
       'show_aqi','show_co2','show_voc','show_nox','show_pm1','show_pm25','show_pm4','show_pm10'];
     const needsRebuild = !this._config || structuralKeys.some(k => 
@@ -540,7 +544,10 @@ class PremiumPurifierCard extends HTMLElement {
     try {
     const hass=this._hass, cfg=this._config;
     const lang=hass?.language||'sv';
-    const temp=hass?.states[cfg.temperature_entity]?.state??'--';
+    const tempState=hass?.states[cfg.temperature_entity];
+    const tempRaw=tempState?.state??'--';
+    const tempUnit=tempState?.attributes?.unit_of_measurement??'°C';
+    const temp=tempRaw;
     const hum=hass?.states[cfg.humidity_entity]?.state??'--';
     const modeEnt=hass?.states[cfg.mode_entity];
     const mode=modeEnt?.state??'';
@@ -757,8 +764,9 @@ class PremiumPurifierCard extends HTMLElement {
             background:linear-gradient(135deg,${p},${alpha(p,0.8)});
             color:#fff;}
           /* SPEED SLIDER */
-          .slider-wrap{grid-column:1/-1;background:${statBg};border-radius:16px;
-            padding:16px 20px 14px;border:1px solid ${statBorder};position:relative;z-index:1;width:100%;box-sizing:border-box;}
+          .slider-wrap{grid-column:1/-1;${cfg.show_slider_box!==false
+            ? `background:${statBg};border-radius:16px;padding:16px 20px 14px;border:1px solid ${statBorder};`
+            : 'background:transparent;border:none;padding:8px 4px;'}position:relative;z-index:1;width:100%;box-sizing:border-box;}
           .slider-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
           .slider-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:${textSub};}
           .slider-value{font-size:13px;font-weight:700;color:${p};}
@@ -924,7 +932,7 @@ class PremiumPurifierCard extends HTMLElement {
           '</div>';
       }
     }
-    const tEl=root.getElementById('temp-val'); if(tEl){ tEl.textContent=`${temp}°C`; tEl.style.color=tempValColor; }
+    const tEl=root.getElementById('temp-val'); if(tEl){ tEl.textContent=`${temp}${tempUnit}`; tEl.style.color=tempValColor; }
     const hEl=root.getElementById('hum-val');  if(hEl){ hEl.textContent=`${hum}%`;   hEl.style.color=humValColor; }
     const headerFilterRow=root.getElementById('header-filter-row');
     const headerFilterEl=root.getElementById('header-filter-val');
